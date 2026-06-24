@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: intern-app
+  labels:
+    app: intern-app
+spec:
+  replicas: 1   # Görev (Hafta 4): Bu değeri 2'ye çıkar, ne değiştiğini gözlemle
+  selector:
+    matchLabels:
+      app: intern-app
+  template:
+    metadata:
+      labels:
+        app: intern-app
+    spec:
+      containers:
+        - name: intern-app
+          image: ghcr.io/GITHUB_USER/intern-cicd-project:latest  # kendi kullanıcı adını yaz
+          ports:
+            - containerPort: 5000
+          env:
+            - name: APP_ENV
+              value: "production"   # Görev (Hafta 4): Bunu ConfigMap'ten oku
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 5000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /ping   # Görev (Hafta 2 sonrası): Bunu /health olarak değiştir
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10

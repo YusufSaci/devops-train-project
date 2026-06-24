@@ -1,0 +1,152 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ─── ADIM 1: Test ───────────────────────────────────────────────
+  test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Kodu checkout et
+        uses: actions/checkout@v4
+
+      - name: Python kur
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Bağımlılıkları yükle
+        run: pip install -r app/requirements.txt
+
+      - name: Testleri çalıştır
+        run: |
+          cd app
+          pytest test_app.py -v
+
+  # ─── ADIM 2: Docker Build & Security Scan ───────────────────────
+  build:
+    name: Docker Build & Scan
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - name: Kodu checkout et
+        uses: actions/checkout@v4
+
+      - name: Docker Buildx kur
+        uses: docker/setup-buildx-action@v3
+
+      - name: Image build al
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: false
+          tags: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          outputs: type=docker,dest=/tmp/image.tar
+
+      - name: Image'ı yükle
+        run: docker load --input /tmp/image.tar
+
+      - name: Trivy ile güvenlik taraması yap
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          format: "table"
+          exit-code: "1"           # CRITICAL veya HIGH açık bulursa pipeline dursun
+          ignore-unfixed: true
+          severity: "CRITICAL,HIGH"
+
+      # TODO (Görev - Hafta 3): Trivy sonucunu PR comment olarak ekle
+
+      - name: Image tar'ı artifact olarak sakla
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp/image.tar
+          retention-days: 1
+
+  # ─── ADIM 3: Registry'ye Push (sadece main) ─────────────────────
+  push:
+    name: Push to Registry
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Kodu checkout et
+        uses: actions/checkout@v4
+
+      - name: GHCR'ye login ol
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image metadata hazırla
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest
+
+      - name: Image build al ve push et
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ─── ADIM 4: Kubernetes Deploy (sadece main) ─────────────────────
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: push
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+      - name: Kodu checkout et
+        uses: actions/checkout@v4
+
+      # Gerçek bir cluster için kubeconfig secret'ı kullanılır.
+      # Bu adım şu an simüle ediliyor — gerçek deploy için aşağıdaki
+      # satırların yorumunu kaldır ve KUBECONFIG secret'ını ekle.
+      #
+      # - name: kubectl kur
+      #   uses: azure/setup-kubectl@v3
+      #
+      # - name: Kubeconfig ayarla
+      #   run: echo "${{ secrets.KUBECONFIG }}" | base64 -d > kubeconfig.yaml
+      #
+      # - name: Deploy et
+      #   run: |
+      #     export KUBECONFIG=kubeconfig.yaml
+      #     kubectl apply -f k8s/
+
+      - name: Deploy simülasyonu
+        run: |
+          echo "✅ Deploy edilecek image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}"
+          echo "✅ kubectl apply -f k8s/ komutu burada çalışacak"
+          echo "ℹ️  Gerçek cluster bağlantısı için KUBECONFIG secret'ı gereklidir."
