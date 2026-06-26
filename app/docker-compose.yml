@@ -1,5 +1,8 @@
+# container = servis
 services:
+# containerların listesi
   app:
+   # docker build -t ... otomatikleşmiş hali
     build: .
     ports:
       - "5000:5000"
