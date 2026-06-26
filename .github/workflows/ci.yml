@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: yusufsaci/devops-train-project/intern-app
 
 jobs:
   # ─── ADIM 1: Test ───────────────────────────────────────────────
@@ -78,12 +78,12 @@ jobs:
           path: /tmp/image.tar
           retention-days: 1
 
-  # ─── ADIM 3: Registry'ye Push (sadece main) ─────────────────────
+  # ─── ADIM 3: Registry'ye Push (sadece master) ─────────────────────
   push:
     name: Push to Registry
     runs-on: ubuntu-latest
     needs: build
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
 
     permissions:
       contents: read
@@ -113,18 +113,19 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
+          file: app/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # ─── ADIM 4: Kubernetes Deploy (sadece main) ─────────────────────
+  # ─── ADIM 4: Kubernetes Deploy (sadece master) ─────────────────────
   deploy:
     name: Deploy to Kubernetes
     runs-on: ubuntu-latest
     needs: push
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
 
     steps:
       - name: Kodu checkout et
