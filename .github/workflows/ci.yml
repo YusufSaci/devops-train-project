@@ -93,6 +93,9 @@ jobs:
     steps:
       - name: Kodu checkout et
         uses: actions/checkout@v4
+        
+      - name: Docker Buildx kur
+        uses: docker/setup-buildx-action@v3
 
       - name: GHCR'ye login ol
         uses: docker/login-action@v3
