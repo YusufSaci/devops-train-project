@@ -13,6 +13,9 @@ WORKDIR /app
 
 RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
+RUN pip install --no-cache-dir --upgrade pip setuptools wheel jaraco.context
+
+
 # ilk nokta: bilgisayarımızdaki klasör (nokta ise o an bulunduğumuz directory)
 # ikinci nokta: container içindeki mevcut klasör (bu örnekte /app ye karşılık gelir).
 # ilk konumda bulunan tüm dosyaları hedef konumdaki dosyanın içine kopyalar
