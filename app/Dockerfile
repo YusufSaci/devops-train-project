@@ -18,6 +18,8 @@ RUN pip install --user --no-cache-dir -r requirements.txt
 FROM python:3.11-slim AS runtime
 WORKDIR /app
 
+RUN pip uninstall -y wheel jaraco.context setuptools
+
 COPY --from=builder /root/.local /root/.local
 
 COPY app/ .
