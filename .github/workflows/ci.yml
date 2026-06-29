@@ -60,6 +60,12 @@ jobs:
 
       - name: Image'ı yükle
         run: docker load --input /tmp/image.tar
+      - name: Image boyutunu logla
+        run: |
+          SIZE_BYTES=$(docker image inspect ${{ env.IMAGE_NAME }}:${{ github.sha }} --format='{{.Size}}')
+          SIZE_MB=$(awk "BEGIN {printf \"%.2f\", $SIZE_BYTES/1024/1024}")
+          echo "Docker Image Boyutu: $SIZE_MB MB ($SIZE_BYTES bayt)"
+          echo "### Docker Image Boyutu: **$SIZE_MB MB**" >> $GITHUB_STEP_SUMMARY
 
       - name: Trivy ile güvenlik taraması yap
         uses: aquasecurity/trivy-action@master
