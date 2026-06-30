@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: intern-app
-          image: ghcr.io/GITHUB_USER/intern-cicd-project:latest  # kendi kullanıcı adını yaz
+          image: ghcr.io/yusufsaci/devops-train-project/intern-app:latest
           ports:
             - containerPort: 5000
           env:
