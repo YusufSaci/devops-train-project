@@ -47,9 +47,6 @@ jobs:
       - name: Kodu checkout et
         uses: actions/checkout@v4
 
-      - name: QEMU kur (Multi-arch için)
-        uses: docker/setup-qemu-action@v3
-
       - name: Docker Buildx kur
         uses: docker/setup-buildx-action@v3
 
@@ -63,7 +60,6 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           outputs: type=docker,dest=/tmp/image.tar
-          platforms: linux/amd64,linux/arm64
 
       - name: Image'ı yükle
         run: docker load --input /tmp/image.tar
