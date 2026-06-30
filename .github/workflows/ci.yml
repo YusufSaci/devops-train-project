@@ -39,6 +39,9 @@ jobs:
     name: Docker Build & Scan
     runs-on: ubuntu-latest
     needs: test
+    permissions:
+      contents: read
+      pull-requests: write
 
     steps:
       - name: Kodu checkout et
@@ -60,6 +63,7 @@ jobs:
 
       - name: Image'ı yükle
         run: docker load --input /tmp/image.tar
+
       - name: Image boyutunu logla
         run: |
           SIZE_BYTES=$(docker image inspect ${{ env.IMAGE_NAME }}:${{ github.sha }} --format='{{.Size}}')
@@ -75,8 +79,49 @@ jobs:
           exit-code: "1"           # CRITICAL veya HIGH açık bulursa pipeline dursun
           ignore-unfixed: true
           severity: "CRITICAL,HIGH"
+          output: trivy-results.txt
 
       # TODO (Görev - Hafta 3): Trivy sonucunu PR comment olarak ekle
+      - name: Trivy sonucunu PR comment olarak ekle
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let output = "Trivy çıktısı okunamadı.";
+            try {
+              output = fs.readFileSync('trivy-results.txt', 'utf8');
+            } catch (e) {
+              console.log(e);
+            }
+
+            const marker = '<!-- trivy-scan-comment -->';
+            const body = `${marker}\n### Trivy Güvenlik Taraması Sonucu\n\n\`\`\`\n${output.slice(0, 60000)}\n\`\`\``;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c => c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }
+
 
       - name: Image tar'ı artifact olarak sakla
         uses: actions/upload-artifact@v4
